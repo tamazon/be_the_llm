@@ -90,9 +90,56 @@
   .convo::-webkit-scrollbar,.tools::-webkit-scrollbar{width:9px;}
   .convo::-webkit-scrollbar-thumb,.tools::-webkit-scrollbar-thumb{background:#2a313c; border-radius:5px;}
   a.link{color:var(--blue); cursor:pointer; text-decoration:underline;}
+
+  .overlay{position:fixed; inset:0; background:rgba(5,8,12,.86); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;}
+  .overlay.show{display:flex;}
+  .ocard{background:var(--panel); border:1px solid var(--border); border-radius:12px; max-width:680px; width:100%; max-height:88vh; overflow-y:auto; padding:26px 30px; box-shadow:0 20px 60px rgba(0,0,0,.55);}
+  .ocard h1{margin:0 0 4px; font-size:20px; color:var(--accent);}
+  .ocard .lead{color:var(--muted); font-size:13px; margin:0 0 18px;}
+  .ocard h2{font-size:14px; color:var(--accent2); margin:22px 0 8px; letter-spacing:.3px;}
+  .ocard p{font-size:13.5px; line-height:1.85; margin:0 0 12px; color:var(--text);}
+  .ocard ol{font-size:13.5px; line-height:1.85; margin:0 0 12px; padding-left:1.35em;}
+  .ocard ol li{margin-bottom:4px;}
+  .ocard .em{color:var(--accent2); font-weight:700;}
+  .ocard .box{background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:0 0 12px; font-size:13px; line-height:1.75;}
+  .ocard code{background:#0e1620; border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-size:12px; color:#cfe5ff;}
+  .ostart{margin-top:20px; text-align:center;}
+  .ostart button{font-size:15px; padding:11px 30px;}
+  .ocard::-webkit-scrollbar{width:9px;}
+  .ocard::-webkit-scrollbar-thumb{background:#2a313c; border-radius:5px;}
 </style>
 </head>
 <body>
+<div class="overlay" id="intro">
+  <div class="ocard">
+    <h1>🤖 Be the LLM — はじめに</h1>
+    <p class="lead">AI の“中の人”になって遊ぶゲームです。AIツールに詳しくなくても大丈夫。</p>
+
+    <h2>このゲームは何？</h2>
+    <p>ChatGPT や Claude のような AI は、すごく賢いのに、実はできることは1つだけ。<span class="em">文章を書くこと</span>です。自分でファイルを開いたり、アプリを動かしたりは一切できません。いわば<span class="em">「手も足もなく、紙に書くことしかできない天才」</span>。</p>
+    <p>では、なぜ “Claude Code” のような AI は、ファイルを読んだりコマンドを実行できるのか？ こういう仕組みです：</p>
+    <ol>
+      <li>AI に「<span class="em">使える道具の一覧</span>」を渡しておく（ファイルを読む道具、コマンドを動かす道具…）</li>
+      <li>AI は何かしたいとき、<span class="em">決まった書式で「この道具を、こう使いたい」と書く</span></li>
+      <li>AI の外側にいる<span class="em">世話役のプログラム</span>が、それを読んで実際に道具を動かし、<span class="em">結果を AI に返す</span></li>
+      <li>AI は結果を見て、次の一手をまた書く……の繰り返し</li>
+    </ol>
+    <p>この世話役が裏で道具を動かすから、文字しか書けないはずの AI が、自分でPCを操作しているように見えるわけです。</p>
+    <div class="box">👉 <b>このゲームでやること</b>：あなたが、その <span class="em">AI の役</span>になります。課題と道具の一覧が渡されるので、<span class="em">道具の注文書を自分で書いて</span>問題を解いてください。道具の実行（世話役）はゲームが担当します。</div>
+
+    <h2>遊び方</h2>
+    <p>注文書はこんな書式（JSON）で、下の入力欄に書きます：</p>
+    <div class="box"><code>{ "name": "Read", "input": { "file_path": "/hello.txt" } }</code><br>＝「Read という道具で /hello.txt を読んで」という注文</div>
+    <ol>
+      <li>送信は <code>Ctrl</code>（Mac は <code>⌘</code>）＋ <code>Enter</code></li>
+      <li>複数の道具を同時に使うなら配列： <code>[ {...}, {...} ]</code></li>
+      <li>右側のパネルに、その課題で使える道具と書式があります（「テンプレを入力欄へ」で雛形が入ります）</li>
+      <li>最初は <span class="em">れんしゅう</span>レベルから。入力欄に注文書を入れてあるので、まず送ってみて</li>
+    </ol>
+
+    <div class="ostart"><button class="primary" id="introStart">やってみる</button></div>
+  </div>
+</div>
 <header>
   <div class="logo">▮ Be the LLM <small>— あなたがモデルになって tool_use を書く</small></div>
   <div class="spacer"></div>
@@ -102,7 +149,7 @@
   <span class="stat" id="budgetStat" style="display:none">budget <b id="budget">-</b></span>
   <select class="levelpick" id="levelpick"></select>
   <button id="restart">リセット</button>
-  <button id="help">?</button>
+  <button id="help">はじめに</button>
 </header>
 
 <main>
@@ -354,6 +401,19 @@ function noisyLog(){
 
 const LEVELS = [
   {
+    title:"れんしゅう：はじめての道具",
+    task:`まず1回、道具を使ってみましょう。\n\n入力欄に Read（ファイルを読む道具）の注文書を、すでに入れてあります。\nそのまま Ctrl/⌘ + Enter で送信してください。結果が返ってきます。\n\n結果に書かれている「合言葉」を、submit_answer で送ればクリアです。`,
+    tools:["Read","submit_answer"],
+    par:2,
+    prefill:`{
+  "name": "Read",
+  "input": { "file_path": "/hello.txt" }
+}`,
+    files:{"/hello.txt":"やったね！ これが「道具を使った結果」です。\n\n仕上げに、合言葉「ひらけごま」を submit_answer で送ってください。\n書き方の例： { \"name\": \"submit_answer\", \"input\": { \"answer\": \"ひらけごま\" } }\n"},
+    check:e=> (e.submitted||"").trim()==="ひらけごま",
+    solution:`入力欄のものをそのまま送信 → 結果を読む →\n{ "name": "submit_answer", "input": { "answer": "ひらけごま" } }`
+  },
+  {
     title:"First contact — Read で読む",
     task:`ようこそ。あなたは今 Claude Code につながった LLM です。\n\nファイル /workspace/secret.txt にパスワードが書かれています。\nそれを Read で読み取り、submit_answer で提出してください。`,
     tools:["Read","submit_answer"],
@@ -574,11 +634,12 @@ function loadLevel(i){
   state.env={files:JSON.parse(JSON.stringify(L.files)), cwd:"/", submitted:null};
   state.turns=0; state.calls=0; state.solved=false; state.incidents=0; state.budgetWarned=false;
   $("convo").innerHTML="";
-  pushMessage("user", `[Level ${i+1}] ${L.title}\n\n${L.task}`);
+  pushMessage("user", `[${i===0?"れんしゅう":"Level "+i}] ${L.title}\n\n${L.task}`);
   renderTools();
   updateStats();
+  $("input").value = L.prefill || "";
   $("input").focus();
-  try{ localStorage.setItem("btl_lv", String(i)); }catch(_){}
+  try{ localStorage.setItem("btl_lv2", String(i)); }catch(_){}
 }
 function updateStats(){
   $("lvNum").textContent=state.lv+1;
@@ -755,40 +816,26 @@ $("clearin").onclick=()=>{ $("input").value=""; $("input").focus(); };
 $("restart").onclick=()=>loadLevel(state.lv);
 $("ex1").onclick=()=>{ $("input").value='{\n  "name": "Read",\n  "input": { "file_path": "/workspace/secret.txt" }\n}'; };
 $("ex2").onclick=()=>{ $("input").value='[\n  { "name": "Read", "input": { "file_path": "/a.txt" } },\n  { "name": "Read", "input": { "file_path": "/b.txt" } }\n]'; };
-$("help").onclick=()=>{
-  alert(
-`Be the LLM — 遊び方
-
-あなたは Claude Code につながった LLM です。
-人間(ハーネス)が課題と使えるツール定義を渡してきます。
-あなたは tool_use を JSON で書いて返すだけ。
-
-・形式: { "name": "<ツール名>", "input": { ...引数... } }
-・複数同時(並列)に呼ぶなら配列: [ {...}, {...} ]
-・送信は Ctrl/⌘ + Enter
-・右パネルの schema を開くと引数の型がわかります
-・"テンプレを入力欄へ" で雛形を挿入できます
-
-ハーネスは本物っぽく検証します:
-  JSON パースエラー / 未知ツール / 必須プロパティ欠落 /
-  型不一致 / Edit の old_string が一意でない ... など。
-
-課題の達成条件を満たせばクリア。tool call 数(par)が
-少ないほど効率的=トークン効率が良い、という気持ちで。`);
-};
+function showIntro(){ $("intro").classList.add("show"); }
+function hideIntro(){ $("intro").classList.remove("show"); try{ localStorage.setItem("btl_intro","1"); }catch(_){} $("input").focus(); }
+$("help").onclick=showIntro;
+$("introStart").onclick=hideIntro;
+$("intro").onclick=e=>{ if(e.target===$("intro")) hideIntro(); };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && $("intro").classList.contains("show")) hideIntro(); });
 
 // レベルセレクタ
 LEVELS.forEach((L,i)=>{
   const o=document.createElement("option");
-  o.value=String(i); o.textContent=`Lv ${i+1}: ${L.title}`;
+  o.value=String(i); o.textContent=`${i===0?"れんしゅう":"Lv "+i}: ${L.title}`;
   $("levelpick").appendChild(o);
 });
 $("lvTotal").textContent=LEVELS.length;
 $("levelpick").onchange=e=>loadLevel(Number(e.target.value));
 
 let start=0;
-try{ const s=Number(localStorage.getItem("btl_lv")); if(s>=0&&s<LEVELS.length) start=s; }catch(_){}
+try{ const s=Number(localStorage.getItem("btl_lv2")); if(s>=0&&s<LEVELS.length) start=s; }catch(_){}
 loadLevel(start);
+try{ if(!localStorage.getItem("btl_intro")) showIntro(); }catch(_){ showIntro(); }
 </script>
 </body>
 </html>
